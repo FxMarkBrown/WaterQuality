@@ -22,7 +22,7 @@ WaterQuality/                  # 项目根目录
 ```
 
 ## 系统架构流程图
-![系统架构流程图](flow.jpg)
+![系统架构流程图](Flow.jpg)
 
 ## 特别感谢
 @Jetbrains IDE开发支持
