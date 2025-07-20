@@ -9,7 +9,7 @@ from db.Model import WaterQuality
 ########################### 数据库 ###########################
 # 数据库连接配置
 DB_USER = os.getenv("DB_USER", "root")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Ainiduo1.")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "root")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "3306")
 DB_NAME = os.getenv("DB_NAME", "water")
