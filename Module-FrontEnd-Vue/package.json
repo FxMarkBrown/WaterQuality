@@ -1,0 +1,34 @@
+{
+  "name": "waterqualitymonitor",
+  "version": "2.0.0",
+  "description": "Water Quality Monitor System Front End",
+  "author": "sctpan, fxmarkbrown",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.0",
+    "axios": "^1.6.0",
+    "echarts": "^5.4.0",
+    "view-ui-plus": "^1.3.0",
+    "qs": "^6.11.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "vite": "^5.0.0"
+  },
+  "engines": {
+    "node": ">= 16.0.0",
+    "npm": ">= 8.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not ie <= 8"
+  ]
+}
