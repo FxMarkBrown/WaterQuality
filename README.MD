@@ -8,9 +8,9 @@
 
 
 ## 技术栈
-前端：Vue3+Vite
-后端-用户管理模块：Kotlin+SpringBoot3+JPA
-后端-模型管理模块：FastAPI+Pandas+Scikit-learn+Pytorch
+- 前端：Vue3+Vite
+- 后端-用户管理模块：Kotlin+SpringBoot3+JPA
+- 后端-模型管理模块：FastAPI+Pandas+Scikit-learn+Pytorch
 
 ```plaintext
 WaterQuality/                  # 项目根目录
