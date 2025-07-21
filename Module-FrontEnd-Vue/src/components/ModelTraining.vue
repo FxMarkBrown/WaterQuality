@@ -99,6 +99,12 @@ const plot = () => {
   const plotElement = document.getElementById('plot')
   if (!plotElement) return
 
+  // 检查是否已存在ECharts实例，如果有则先销毁
+  if (chart) {
+    chart.dispose()
+    chart = null
+  }
+  
   chart = proxy.$echarts.init(plotElement)
   const x = new Array(pred.value.length)
   for (let i = 0; i < pred.value.length; i++) {
