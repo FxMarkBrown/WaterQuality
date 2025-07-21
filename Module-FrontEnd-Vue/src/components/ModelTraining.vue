@@ -118,7 +118,8 @@ const plot = () => {
       subtext: '均方根误差(RMSE): ' + rmse.value
     },
     legend: {
-      data: ['Predication', 'Actual value']
+      data: ['预测值', '实际值'],
+      top: '10%'
     },
     tooltip: {
       trigger: 'item'
@@ -132,12 +133,14 @@ const plot = () => {
       scale: true
     },
     series: [{
+      name: '预测值',
       data: pred.value,
       lineStyle: {
         color: 'blue'
       },
       type: 'line'
     }, {
+      name: '实际值',
       data: real.value,
       lineStyle: {
         color: 'red'
