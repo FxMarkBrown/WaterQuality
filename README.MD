@@ -1,6 +1,11 @@
 # 水质预测平台
 一个简易的水质预测平台
 
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![前端模块版本](https://img.shields.io/badge/前端模块-3.0.0-blue.svg)
+![用户管理模块](https://img.shields.io/badge/用户管理模块-0.1.0-blue.svg)
+![模型管理模块](https://img.shields.io/badge/模型管理模块-0.2.0-blue.svg)
+
 ## 目前的功能
 - 自动处理并从excel表格导入国控水质检测平台的水质数据
 - 基本的前端，用户注册并登入后可以管理水质数据，查看历史趋势
@@ -8,9 +13,9 @@
 
 
 ## 技术栈
-- 前端：Vue3+Vite
+- 前端：TypeScript+Vue3+Vite
 - 后端-用户管理模块：Kotlin+SpringBoot3+JPA
-- 后端-模型管理模块：FastAPI+Pandas+Scikit-learn+Pytorch
+- 后端-模型管理模块：Python+FastAPI+Pandas+Scikit-learn+Pytorch
 
 ```plaintext
 WaterQuality/                  # 项目根目录
@@ -36,7 +41,11 @@ WaterQuality/                  # 项目根目录
 ## 系统架构流程图
 ![系统架构流程图](Flow.jpg)
 
+## TODOs
+- [x] 使用TS重构前端模块
+- [ ] 尝试继续优化用户管理模块
+
 ## 特别感谢
 @Jetbrains IDE开发支持
 
-@sctpan 本项目部分引用其水质检测系统的代码
+@sctpan 本项目部分引用其水质检测系统的代码并对其进行重构
