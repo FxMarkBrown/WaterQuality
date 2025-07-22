@@ -1,8 +1,8 @@
 {
   "name": "waterqualitymonitor",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Water Quality Monitor System Front End",
-  "author": "sctpan, fxmarkbrown",
+  "author": "sctpan, FxMarkBrown",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "qs": "^6.11.0",
     "view-ui-plus": "^1.3.0",
     "vue": "^3.4.0",
-    "vue-router": "^4.2.0"
+    "vue-router": "^4.2.0",
+    "pinia": "^3.0.3"
   },
   "devDependencies": {
     "@types/node": "^24.0.15",

@@ -1,229 +1,363 @@
 <template>
+  <!-- 用户管理主内容区域 -->
   <div class="content">
+    <!-- 搜索区域 -->
     <Row class="search">
       <Col span="6" offset="9">
-        <Input search enter-button placeholder="搜索" v-model="searchUsername" @search="getQueriedUsers"/>
+        <Input
+          search
+          enter-button="搜索"
+          placeholder="请输入用户名进行搜索"
+          v-model="searchKeyword"
+          @search="handleSearch"
+          clearable
+        />
       </Col>
     </Row>
+
+    <!-- 用户列表区域 -->
     <div class="data_table">
-      <Table class="table" border  :loading="loading_flag" :columns="columns" :data="allUsers">
+      <Table
+        class="table"
+        border
+        :loading="isLoading"
+        :columns="tableColumns"
+        :data="currentUsers"
+        empty-text="暂无用户数据"
+      >
+        <!-- 操作列模板 -->
         <template #action="{ row, index }">
-          <Button type="primary" size="default" style="margin-right: 10px" @click="show(index)">认证</Button>
-          <Button type="error" size="default" @click="remove(index)">删除</Button>
+          <Button
+            type="primary"
+            size="default"
+            style="margin-right: 10px"
+            @click="showGrantPermissionModal(index)"
+            :disabled="row.role === USER_ROLE_NAMES[USER_ROLES.SUPER_ADMIN]"
+          >
+            修改权限
+          </Button>
+          <Button
+            type="error"
+            size="default"
+            @click="deleteUser(index)"
+            :disabled="row.role === USER_ROLE_NAMES[USER_ROLES.SUPER_ADMIN]"
+          >
+            删除
+          </Button>
         </template>
       </Table>
     </div>
-    <Modal v-model="modal_flag" title="是否给予此用户认证？" @on-ok="grantAuthority" >
+    <!-- 权限修改模态框 -->
+    <Modal
+      v-model="showGrantModal"
+      title="修改用户权限"
+      @on-ok="grantAuthority"
+      @on-cancel="handleGrantCancel"
+      :mask-closable="false"
+    >
+      <!-- 用户名显示 -->
       <Row class="editLine">
         <Col span="4" offset="6" style="text-align: center">
           <span>用户名</span>
         </Col>
         <Col span="6" offset="1">
-          <span>{{ chosenUser.username }}</span>
+          <span>{{ selectedUser.username }}</span>
         </Col>
       </Row>
+
+      <!-- 当前角色显示 -->
       <Row class="editLine">
         <Col span="4" offset="6" style="text-align: center">
-          <span>角色</span>
+          <span>当前角色</span>
         </Col>
         <Col span="6" offset="1">
-          <span>{{ chosenUser.role }}</span>
+          <span>{{ selectedUser.role }}</span>
         </Col>
       </Row>
+
+      <!-- 角色选择 -->
       <Row class="editLine">
         <Col span="4" offset="6" style="text-align: center">
-          <span>权限</span>
+          <span>新角色</span>
         </Col>
         <Col span="6" offset="1">
-          <Select size="small" v-model="roleName">
-            <Option value="vip" >管理员</Option>
-            <Option value="user">普通用户</Option>
+          <Select v-model="newRoleName" placeholder="请选择角色">
+            <Option :value="GRANT_ROLE_OPTIONS.VIP">{{ USER_ROLE_NAMES[USER_ROLES.ADMIN] }}</Option>
+            <Option :value="GRANT_ROLE_OPTIONS.USER">{{ USER_ROLE_NAMES[USER_ROLES.USER] }}</Option>
           </Select>
+        </Col>
+      </Row>
+
+      <!-- 权限说明 -->
+      <Row class="editLine">
+        <Col span="4" offset="6" style="text-align: center">
+          <span>权限说明</span>
+        </Col>
+        <Col span="6" offset="1">
+          <span v-if="newRoleName === 'vip'" class="authority-desc">
+            查询、创建、修改、删除水质数据；预测水质；训练模型
+          </span>
+          <span v-else-if="newRoleName === 'user'" class="authority-desc">
+            查询水质数据；预测水质
+          </span>
+          <span v-else class="authority-desc placeholder">
+            请选择角色查看权限说明
+          </span>
         </Col>
       </Row>
     </Modal>
   </div>
 </template>
 
+/**
+* 用户管理组件
+* @description 管理系统用户，包括用户搜索、权限修改、用户删除等
+* @author FxMarkBrown
+*/
 <script setup>
-import { ref, reactive, onMounted, getCurrentInstance } from 'vue'
-import {Button, Col, Input, Message, Modal, Option, Row, Select, Table} from 'view-ui-plus'
+// ============================ 核心导入 ============================
+import {ref, reactive, onMounted, computed, watch} from 'vue'
 
-const { proxy } = getCurrentInstance()
+// ============================ UI组件导入 ============================
+import {Button, Col, Input, Modal, Option, Row, Select, Table} from 'view-ui-plus'
 
-const loading_flag = ref(true)
-const modal_flag = ref(false)
-const allUsers = ref([])
-const chosenUser = reactive({})
-const roleName = ref('')
-const searchUsername = ref('')
+// ============================ 状态管理导入 ============================
+import {useUserStore} from '@/stores/user'
+import {useAuthStore} from '@/stores/auth'
 
-const columns = ref([
-  {
-    title: 'ID',
-    key: 'id',
-    align: 'center'
-  },
-  {
-    title: '用户名',
-    key: 'username',
-    align: 'center',
-  },
-  {
-    title: '角色',
-    key: 'role',
-    align: 'center',
-    filters: [
-      {
-        label: 'Admin',
-        value: 1
-      },
-      {
-        label: 'User',
-        value: 2
-      }
-    ],
-    filterMultiple: false,
-  },
-  {
-    title: '操作',
-    slot: 'action',
-    align: 'center',
-  }
-])
+// ============================ 工具函数导入 ============================
+import {ErrorHandler, showError} from '@/utils/error-handler'
+import {GRANT_ROLE_OPTIONS, USER_ROLE_NAMES, USER_ROLES, USER_TABLE_COLUMNS} from '@/constants'
 
-const getAllUsers = async () => {
+// ============================ 状态初始化 ============================
+const userStore = useUserStore()
+const authStore = useAuthStore()
+
+// ============================ 响应式数据定义 ============================
+
+/** 搜索关键词 */
+const searchKeyword = ref('')
+
+/** 权限修改模态框显示状态 */
+const showGrantModal = ref(false)
+
+/** 当前选中的用户 */
+const selectedUser = reactive({
+  id: 0,
+  username: '',
+  role: '',
+  authority: ''
+})
+
+/** 新的角色名称 */
+const newRoleName = ref('')
+
+// ============================ 计算属性 ============================
+
+/** 表格列配置（使用常量定义） */
+const tableColumns = computed(() => {
+  return USER_TABLE_COLUMNS
+})
+
+/** 当前用户列表（基于搜索状态） */
+const currentUsers = computed(() => {
+  return searchKeyword.value.trim() ? userStore.searchResults : userStore.users
+})
+
+/** 是否正在加载 */
+const isLoading = computed(() => {
+  return userStore.isLoadingUsers || userStore.isSearching
+})
+
+/** 是否可以修改权限 */
+const canGrantAuthority = computed(() => {
+  return selectedUser.role !== USER_ROLE_NAMES[USER_ROLES.SUPER_ADMIN] && authStore.isSuperAdmin
+})
+
+// ============================ 监听器 ============================
+
+/**
+ * 监听搜索关键词变化，执行防抖搜索
+ */
+watch(searchKeyword, (newKeyword) => {
+  userStore.debouncedSearchUsers(newKeyword)
+})
+
+// ============================ 业务方法 ============================
+
+/**
+ * 初始化用户列表
+ * 使用状态管理替代直接API调用
+ */
+const initializeUsers = async () => {
   try {
-    loading_flag.value = true
-    const response = await proxy.$axios.get('/user/all')
-    allUsers.value = response.data
-
-    for (let i = 0; i < allUsers.value.length; i++) {
-      if (allUsers.value[i].role.id === 1) {
-        allUsers.value[i].role = '超级管理员'
-      } else if (allUsers.value[i].role.id === 2) {
-        allUsers.value[i].role = '管理员'
-      } else {
-        allUsers.value[i].role = '普通用户'
-      }
-    }
-    loading_flag.value = false
+    await userStore.getAllUsers()
   } catch (error) {
-    loading_flag.value = false
-    Message.error('获取用户列表失败!')
+    ErrorHandler.handleGenericError(error, '获取用户列表')
   }
 }
 
-const show = (index) => {
-  Object.assign(chosenUser, allUsers.value[index])
-  if (chosenUser.role === '超级管理员') {
-    Message.error('不能认证超级管理员')
-  } else {
-    modal_flag.value = true
+/**
+ * 显示权限修改模态框
+ * @param {number} index 用户在列表中的索引
+ */
+const showGrantPermissionModal = (index) => {
+  const user = currentUsers.value[index]
+  if (!user) {
+    showError('用户数据不存在')
+    return
   }
+
+  // 复制用户数据到选中用户
+  Object.assign(selectedUser, user)
+
+  if (selectedUser.role === USER_ROLE_NAMES[USER_ROLES.SUPER_ADMIN]) {
+    showError('不能修改超级管理员角色')
+    return
+  }
+
+  if (!authStore.isSuperAdmin) {
+    showError('无权限执行此操作')
+    return
+  }
+
+  // 根据当前角色设置默认值
+  newRoleName.value = selectedUser.role === '管理员' ? 'vip' : 'user'
+  showGrantModal.value = true
 }
 
-const remove = async (index) => {
+/**
+ * 删除用户
+ * @param {number} index 用户在列表中的索引
+ */
+const deleteUser = async (index) => {
+  const user = currentUsers.value[index]
+  if (!user) {
+    showError('用户数据不存在')
+    return
+  }
+
+  // 复制用户数据到选中用户
+  Object.assign(selectedUser, user)
+
+  if (selectedUser.role === USER_ROLE_NAMES[USER_ROLES.SUPER_ADMIN]) {
+    showError('不能删除超级管理员')
+    return
+  }
+
+  if (!authStore.isAdmin) {
+    showError('无权限执行此操作')
+    return
+  }
+
   try {
-    Object.assign(chosenUser, allUsers.value[index])
-    if (chosenUser.role === '超级管理员') {
-      Message.error('不能删除超级管理员')
-    } else {
-      const response = await proxy.$axios.post('/user/delete/' + chosenUser.id)
-      if (response.data.status === 'success') {
-        Message.success('成功删除!')
-        getQueriedUsers()
-      } else if (response.data.status === 'deny') {
-        Message.error('权限不足')
-      } else {
-        Message.error('删除失败!')
-      }
-    }
-  } catch (error) {
-    Message.error('删除失败!')
-  }
-}
+    // 确认删除
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定要删除用户 "${selectedUser.username}" 吗？此操作不可恢复。`,
+      onOk: async () => {
+        // 使用状态管理删除用户
+        const success = await userStore.deleteUser(selectedUser.id)
 
-const grantAuthority = async () => {
-  try {
-    const response = await proxy.$axios.post(
-      `/user/grant/${chosenUser.id}`,
-      {
-        roleName: roleName.value
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
+        if (success) {
+          // 刷新当前显示的列表
+          if (searchKeyword.value.trim()) {
+            await userStore.searchUsers(searchKeyword.value)
+          }
         }
       }
+    })
+  } catch (error) {
+    ErrorHandler.handleGenericError(error, '删除用户')
+  }
+}
+
+/**
+ * 修改用户权限
+ */
+const grantAuthority = async () => {
+  if (!canGrantAuthority.value) {
+    showError('无权限修改此用户角色')
+    return
+  }
+
+  try {
+    // 使用状态管理修改用户权限
+    const success = await userStore.grantUserPermission(
+      selectedUser.id,
+      {roleName: newRoleName.value}
     )
 
-    if (response.data.status === 'success') {
-      Message.success('认证成功!')
-      getQueriedUsers()
-    } else if (response.data.status === 'deny') {
-      Message.error('权限不足!')
-    } else {
-      Message.error('认证失败!')
-    }
-  } catch (error) {
-    Message.error('认证失败!')
-  }
-}
+    if (success) {
+      // 关闭模态框
+      showGrantModal.value = false
 
-const getQueriedUsers = async () => {
-  try {
-    loading_flag.value = true
-    if (searchUsername.value === '') {
-      getAllUsers()
-    } else {
-      const response = await proxy.$axios.get('/user/query', {
-        params: {
-          username: searchUsername.value
-        }
-      })
-
-      allUsers.value = response.data
-      for (let i = 0; i < allUsers.value.length; i++) {
-        if (allUsers.value[i].role.id === 1) {
-          allUsers.value[i].role = '超级管理员'
-        } else if (allUsers.value[i].role.id === 2) {
-          allUsers.value[i].role = '管理员'
-        } else {
-          allUsers.value[i].role = '普通用户'
-        }
+      // 刷新当前显示的列表
+      if (searchKeyword.value.trim()) {
+        await userStore.searchUsers(searchKeyword.value)
       }
-      loading_flag.value = false
     }
   } catch (error) {
-    loading_flag.value = false
-    Message.error('查询用户失败!')
+    ErrorHandler.handleGenericError(error, '修改用户权限')
   }
 }
 
-onMounted(() => {
-  getAllUsers()
+/**
+ * 处理权限修改模态框取消
+ */
+const handleGrantCancel = () => {
+  showGrantModal.value = false
+  newRoleName.value = ''
+}
+
+/**
+ * 处理搜索输入
+ * @param {string} value 搜索值
+ */
+const handleSearch = (value) => {
+  searchKeyword.value = value
+}
+
+// ============================ 生命周期钩子 ============================
+
+/**
+ * 组件挂载时初始化用户列表
+ */
+onMounted(async () => {
+  await initializeUsers()
 })
 </script>
 
 <style scoped>
-  .search {
-    font-size: 16px;
-    line-height: 32px;
-    margin-top: 20px;
-  }
+.search {
+  font-size: 16px;
+  line-height: 32px;
+  margin-top: 20px;
+}
 
-  .data_table {
-    margin-top: 20px;
-    margin-bottom: 10px;
-    padding-left: 30px;
-    padding-right: 30px;
-  }
+.data_table {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  padding-left: 30px;
+  padding-right: 30px;
+}
 
-  .editLine {
-    font-size: 14px;
-    line-height: 24px;
-    margin-top: 10px;
-    margin-bottom: 10px;
-  }
+.editLine {
+  font-size: 14px;
+  line-height: 24px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+/* 权限说明样式 */
+.authority-desc {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.authority-desc.placeholder {
+  color: #ccc;
+  font-style: italic;
+}
 </style>

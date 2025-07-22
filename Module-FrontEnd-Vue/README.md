@@ -10,4 +10,4 @@ npm run dev
 ## 特别感谢
 @Jetbrains WebStorm等IDE的开发支持
 
-@sctpan 初版前端（Vue2+Webpack），本项目大量引用其代码并重构为Vue3+Vite
+@sctpan 初版前端（Vue2+Webpack），本项目参考其代码使用TypeScript重构为Vue3+Vite

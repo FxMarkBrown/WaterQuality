@@ -2,115 +2,238 @@
   <div class="content">
     <div class="query">
       <Row class="queryline">
-        <Col span="2" offset="2" style="text-align: right;margin-right: 15px">地点</Col>
+        <!-- 站点选择 -->
+        <Col span="2" offset="2" style="text-align: right;margin-right: 15px">
+          <span>地点</span>
+        </Col>
         <Col span="2" style="text-align: left">
-          <Select v-model="station" style="width:100px" placeholder="0">
-            <Option v-for="item in stationList" :value="item" :key="item">{{ item }}</Option>
+          <Select
+            v-model="selectedStation"
+            style="width:100px"
+            placeholder="选择站点"
+          >
+            <Option
+              v-for="station in availableStations"
+              :value="station"
+              :key="station"
+            >
+              {{ station }}
+            </Option>
           </Select>
         </Col>
-        <Col span="2" style="text-align: right;margin-right: 15px; margin-left: 15px"><span>指标</span></Col>
+
+        <!-- 指标选择 -->
+        <Col span="2" style="text-align: right;margin-right: 15px; margin-left: 15px">
+          <span>指标</span>
+        </Col>
         <Col span="2" style="text-align: left">
-          <Select v-model="indicator" style="width: 100px" placeholder="PH">
-            <Option value="ph">PH</Option>
+          <Select
+            v-model="selectedIndicator"
+            style="width: 100px"
+            placeholder="选择指标"
+          >
+            <Option value="ph">PH值</Option>
             <Option value="do">溶解氧</Option>
             <Option value="nh3N">氨氯</Option>
           </Select>
         </Col>
-        <Col span="2" style="text-align: right;margin-right: 15px;margin-left: 15px"><span>时间</span></Col>
+
+        <!-- 时间期间选择 -->
+        <Col span="2" style="text-align: right;margin-right: 15px;margin-left: 15px">
+          <span>时间</span>
+        </Col>
         <Col span="2" style="text-align: left">
-          <Select v-model="period" style="width: 100px" placeholder="One Year">
-            <Option value="1">近一年</Option>
-            <Option value="3">近三年</Option>
-            <Option value="5">近五年</Option>
+          <Select
+            v-model="selectedPeriod"
+            style="width: 100px"
+            placeholder="选择期间"
+          >
+            <Option value="1">{{ TREND_PERIOD_NAMES[TREND_PERIODS.ONE_YEAR] }}</Option>
+            <Option value="3">{{ TREND_PERIOD_NAMES[TREND_PERIODS.THREE_YEARS] }}</Option>
+            <Option value="5">{{ TREND_PERIOD_NAMES[TREND_PERIODS.FIVE_YEARS] }}</Option>
           </Select>
         </Col>
+
+        <!-- 展示按钮 -->
         <Col span="3" offset="2">
-          <Button type="success" shape="circle" icon="ios-stats" long @click="getQueriedDataForPlot">展示趋势</Button>
+          <Button
+            type="success"
+            shape="circle"
+            icon="ios-stats"
+            long
+            :loading="isLoadingTrend"
+            @click="generateTrend"
+          >
+            {{ isLoadingTrend ? '加载中...' : '展示趋势' }}
+          </Button>
         </Col>
       </Row>
     </div>
-    <div id="plot_holder" v-if="plot_loading_flag" style="height: 600px">
-      <Spin size="large" fix v-if="plot_loading_flag" style="font-size: 20px">加载中...</Spin>
+
+    <!-- 图表加载指示 -->
+    <div id="plot_holder" v-if="isLoadingTrend" style="height: 600px">
+      <Spin size="large" fix style="font-size: 20px">加载中...</Spin>
     </div>
-    <div id="plot" style="height: 600px"></div>
+
+    <!-- 图表容器 -->
+    <div
+      ref="trendChartRef"
+      id="trendChart"
+      style="height: 600px; margin-top: 20px; margin-left: 30px; margin-right: 30px; min-height: 600px;"
+      :style="{ visibility: isLoadingTrend ? 'hidden' : 'visible' }"
+    ></div>
   </div>
 </template>
 
+/**
+* 水质趋勿组件
+* @description 显示水质数据的趋势图，支持按站点、指标和时间期间筛选
+* @author FxMarkBrown
+*/
 <script setup>
-import { ref, onMounted, onBeforeUnmount, getCurrentInstance } from 'vue'
-import {Button, Col, Message, Option, Row, Select, Spin} from 'view-ui-plus'
-import { formatDate } from '@/utils/date'
+// ============================ 核心导入 ============================
+import {ref, reactive, onMounted, computed, nextTick} from 'vue'
 
-const { proxy } = getCurrentInstance()
+// ============================ UI组件导入 ============================
+import {Button, Col, Option, Row, Select, Spin} from 'view-ui-plus'
 
-const stationList = ref([])
-const station = ref(0)
-const period = ref('1')
-const indicator = ref('ph')
-const plot_loading_flag = ref(true)
-const waterQualities = ref([])
-const dates = ref([])
-let chart = null
+// ============================ 状态管理导入 ============================
+import {useWaterQualityStore} from '@/stores/waterquality'
 
-const getAllStations = async () => {
+// ============================ 工具函数导入 ============================
+import {useChart} from '@/composables'
+import {formatDate} from '@/utils/date'
+import {ErrorHandler} from '@/utils/error-handler'
+import {TREND_PERIOD_NAMES, TREND_PERIODS, WATER_QUALITY_INDICATOR_NAMES} from "@/constants/index";
+
+// ============================ 状态初始化 ============================
+const waterQualityStore = useWaterQualityStore()
+
+// ============================ 响应式数据定义 ============================
+
+/** 选中的站点 */
+const selectedStation = ref('')
+
+/** 选中的指标 */
+const selectedIndicator = ref('ph')
+
+/** 选中的时间期间 */
+const selectedPeriod = ref('1')
+
+/** 趋勿数据加载状态 */
+const isLoadingTrend = ref(false)
+
+/** 趋勿数据 */
+const trendData = reactive({
+  dates: [],
+  values: [],
+  indicator: ''
+})
+
+// ============================ 计算属性 ============================
+
+/** 可用站点列表 */
+const availableStations = computed(() => waterQualityStore.stations)
+
+/** 是否可以生成趋勿 */
+const canGenerateTrend = computed(() => {
+  // 检查 selectedStation 是否为有效ID（假设ID为非负整数）
+  const isValidStation = typeof selectedStation.value === 'number' && selectedStation.value >= 0;
+  return isValidStation && selectedIndicator.value && selectedPeriod.value && !isLoadingTrend.value
+})
+
+// ============================ ECharts管理 ============================
+
+/** 图表容器引用 */
+const trendChartRef = ref(null)
+
+/** 图表管理组合函数 */
+const {
+  initChart,
+  updateChart,
+  chart
+} = useChart(trendChartRef)
+
+// ============================ 业务方法 ============================
+
+/**
+ * 初始化站点数据
+ */
+const initializeStations = async () => {
   try {
-    const response = await proxy.$axios.get('waterquality/station')
-    stationList.value = response.data
+    await waterQualityStore.getStations()
+
+    // 设置默认站点
+    if (availableStations.value.length > 0) {
+      selectedStation.value = availableStations.value[0]
+    }
   } catch (error) {
-    Message.error('获取站点失败!')
+    ErrorHandler.handleGenericError(error, '获取站点列表')
   }
 }
 
-const getQueriedDataForPlot = async () => {
+/**
+ * 获取趋勿数据
+ */
+const fetchTrendData = async () => {
+  if (!canGenerateTrend.value) {
+    showError('请选择完整的查询条件')
+    return
+  }
+
   try {
-    const charts = document.getElementById('plot')
-    charts.style.height = '0'
+    isLoadingTrend.value = true
 
-    const response = await proxy.$axios.get('waterquality/plot', {
-      params: {
-        station: station.value,
-        period: period.value,
-        indicator: indicator.value
-      }
+    // 使用状态管理获取趋勿数据
+    const result = await waterQualityStore.getTrendData({
+      station: selectedStation.value,
+      indicator: selectedIndicator.value,
+      period: selectedPeriod.value
     })
 
-    const data = response.data
-    waterQualities.value = data.waterquality
+    if (result) {
+      // 格式化数据
+      trendData.dates = waterQualityStore.trendData.dates.map(date => {
+        if (typeof date === 'string' || typeof date === 'number') {
+          return formatDate(date, 'yyyy-MM')
+        }
+        return date
+      })
+      trendData.values = waterQualityStore.trendData.waterquality
+      trendData.indicator = WATER_QUALITY_INDICATOR_NAMES[selectedIndicator.value] || selectedIndicator.value
 
-    // 格式化日期数据
-    dates.value = data.dates.map(date => {
-      // 如果日期是字符串格式，尝试格式化
-      if (typeof date === 'string' || typeof date === 'number') {
-        return formatDate(date, 'yyyy-MM')
-      }
-      return date
-    })
-
-    charts.style.height = '600px'
-    plot()
+      // 渲染图表
+      isLoadingTrend.value = false
+      await renderTrendChart()
+    }
   } catch (error) {
-    Message.error('获取图表数据失败!')
+    ErrorHandler.handleGenericError(error, '获取趋勿数据')
   }
 }
 
-const plot = () => {
-  const plotElement = document.getElementById('plot')
-  if (!plotElement) return
-
-  // 检查是否已存在ECharts实例，如果有则先销毁
-  if (chart) {
-    chart.dispose()
-    chart = null
+/**
+ * 渲染图表
+ */
+const renderTrendChart = async () => {
+  // 确保图表容器存在且可见
+  if (!trendChartRef.value || isLoadingTrend.value) {
+    return
   }
-  
-  chart = proxy.$echarts.init(plotElement)
-  const option = {
+
+  if (!chart.value) {
+    await nextTick()
+    // 小延迟确保DOM尺寸计算完成
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await initChart()
+  }
+
+  const chartConfig = {
     tooltip: {
       trigger: 'item'
     },
     xAxis: {
       type: 'category',
-      data: dates.value,
+      data: trendData.dates,
       axisLabel: {
         rotate: 45,
         interval: 0
@@ -118,50 +241,89 @@ const plot = () => {
     },
     yAxis: {
       type: 'value',
-      scale: true
+      scale: true,
+      name: trendData.indicator
     },
     series: [{
-      data: waterQualities.value,
+      name: trendData.indicator,
+      data: trendData.values,
       type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: {
+        width: 2
+      },
+      itemStyle: {
+        color: '#3399FF'
+      }
     }]
   }
-  chart.setOption(option)
-  plot_loading_flag.value = false
+
+  updateChart(chartConfig)
 }
 
-const handleResize = () => {
-  if (chart) {
-    chart.resize()
-  }
+/**
+ * 生成图
+ */
+const generateTrend = async () => {
+  await fetchTrendData()
 }
 
-onMounted(() => {
-  getAllStations()
-  getQueriedDataForPlot()
-  window.addEventListener('resize', handleResize)
-})
+/**
+ * 初始化组件数据
+ */
+const initializeComponent = async () => {
+  await initializeStations()
+}
 
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', handleResize)
-  if (chart) {
-    chart.dispose()
-  }
+// ============================ 生命周期钩子 ============================
+
+/**
+ * 组件挂载时初始化
+ */
+onMounted(async () => {
+  await initializeComponent()
 })
 </script>
 
 <style scoped>
-  .query {
-    margin-top: 20px;
-  }
+.query {
+  margin-top: 20px;
+  padding: 0 20px;
+}
 
+.queryline {
+  line-height: 32px;
+  align-items: center;
+}
+
+#plot_holder {
+  position: relative;
+  margin-top: 20px;
+  margin-left: 30px;
+  margin-right: 30px;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+}
+
+#trendChart {
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  background: #fff;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
   .queryline {
-    line-height: 32px;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  #plot_holder {
-    position: relative;
-    margin-top: 20px;
-    margin-left: 30px;
-    margin-right: 30px;
+  #trendChart {
+    height: 400px !important;
+    margin-left: 10px;
+    margin-right: 10px;
   }
+}
 </style>
