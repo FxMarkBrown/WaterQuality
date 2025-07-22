@@ -137,7 +137,7 @@ class WaterQualityService(
      * @return 近period年的数据，每个月的所有数据取平均
      */
     fun getDataForPlot(station: Int, period: Int, indicator: String): Map<String, Any> {
-        val startDate = Calendar.getInstance().apply { add(period, -period) }.time
+        val startDate = Calendar.getInstance().apply { add(Calendar.YEAR, -period) }.time
         val avgWaterQualities = waterQualityRepository.findMonthlyAverageByStationAndIndicator(station, startDate, indicator)
 
         val specWaterQualities = mutableListOf<Double>()
@@ -162,8 +162,7 @@ class WaterQualityService(
      * 获取下个月预测用的水质数据（暂时为6个月）
      */
     fun getPredictionDataByIndicator(indicator: String): Map<String, Any> {
-        val calendar = Calendar.getInstance()
-        calendar.add(Calendar.MONTH, -6)
+        val calendar = Calendar.getInstance().apply { add(Calendar.MONTH, -6) }
         val dates = waterQualityRepository.findLastDatesAsc(calendar.time).toMutableList()
         val forPlot = mutableListOf<Float>()
 

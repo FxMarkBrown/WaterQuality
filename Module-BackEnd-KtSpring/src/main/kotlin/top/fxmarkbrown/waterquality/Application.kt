@@ -9,9 +9,11 @@ import org.springframework.boot.runApplication
 * @since 2025/06/14
 **/
 @SpringBootApplication
-object Application {
-    @JvmStatic
-    fun main(args: Array<String>) {
-        runApplication<Application>(*args)
+class Application {
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            runApplication<Application>(*args)
+        }
     }
 }

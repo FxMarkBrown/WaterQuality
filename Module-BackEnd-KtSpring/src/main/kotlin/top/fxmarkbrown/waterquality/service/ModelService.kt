@@ -197,7 +197,7 @@ class ModelService(
     private fun requestTuning(modelId: Int, method: String): Map<String, Any> {
         val url = "${apiConfig.baseUrl}tuning?model_id=$modelId&method=$method"
         val jsonResp = sendFastAPIRequest(url)
-        return parsePredictionResponse(jsonResp).toMutableMap()
+        return parseTuningResponse(jsonResp).toMutableMap()
     }
 
     /**
@@ -267,11 +267,11 @@ class ModelService(
      */
     fun deleteModel(id: Int): Boolean {
         try {
-            modelRepository.findModelById(id)?.also {
-                modelRepository.delete(it)
+            modelRepository.findModelById(id)?.apply {
+                modelRepository.delete(this)
                 return true
-            } ?: return false
-        } catch (e: Exception) {
+            }
+        } catch (_: Exception) {
             return false
         }
 

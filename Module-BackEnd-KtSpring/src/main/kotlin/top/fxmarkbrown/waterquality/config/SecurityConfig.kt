@@ -37,7 +37,8 @@ class SecurityConfig(
         val authenticationManagerBuilder = http.getSharedObject(
             AuthenticationManagerBuilder::class.java
         )
-        authenticationManagerBuilder.userDetailsService(userService)
+        authenticationManagerBuilder
+            .userDetailsService(userService)
             .passwordEncoder(passwordEncoder)
         return authenticationManagerBuilder.build()
     }
@@ -62,7 +63,10 @@ class SecurityConfig(
                 it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             }
             .authorizeHttpRequests { auth ->
-                auth.requestMatchers("/status/**", "/user/register").permitAll()
+                auth.requestMatchers(
+                    "/status/**",
+                    "/user/register"
+                ).permitAll()
                 auth.requestMatchers(
                     "/waterquality/add",
                     "/waterquality/delete/*",

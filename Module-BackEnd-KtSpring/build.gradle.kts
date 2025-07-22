@@ -9,7 +9,7 @@ plugins {
 apply(plugin = "io.spring.dependency-management")
 
 group = "top.fxmarkbrown"
-version = "0.1.0-SNAPSHOT"
+version = "0.1.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
