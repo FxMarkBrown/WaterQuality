@@ -2,6 +2,7 @@
 一个简易的水质预测平台
 
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Codacy Badge](https://app.codacy.com/project/badge/Grade/751bdd64552340a09021094ab6366f87)
 ![前端模块版本](https://img.shields.io/badge/前端模块-3.0.0-blue.svg)
 ![用户管理模块](https://img.shields.io/badge/用户管理模块-0.1.0-blue.svg)
 ![模型管理模块](https://img.shields.io/badge/模型管理模块-0.2.0-blue.svg)
