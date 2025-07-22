@@ -38,7 +38,10 @@ load_dotenv()
 app = FastAPI()
 # 创建数据库引擎
 engine = create_engine(
-    f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"mysql+mysqlconnector://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
+    pool_pre_ping = True,
+    pool_recycle = 300,  # 5分钟回收一次连接
+    pool_size = 10
 )
 # 创建会话工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -208,16 +211,14 @@ async def predict_next_point(
     :return 预测结果
     """
     print(f"收到预测请求, 模型ID: {model_id}, 预测月: {month}")
+    db = SessionLocal()
 
     try:
         if not 1 <= month <= 12:
             raise HTTPException(status_code=400, detail="起始月份必须在1-12之间")
 
-        # 获取模型信息
-        db = SessionLocal()
         # noinspection PyTypeChecker
         model_info = db.query(Model).filter(Model.id == model_id).first()
-        db.close()
 
         if not model_info:
             raise HTTPException(status_code=404, detail=f"模型ID {model_id} 不存在")
@@ -266,6 +267,8 @@ async def predict_next_point(
     except Exception as e:
         print(f"预测错误: {str(e)}")
         return { "status": "failure" }
+    finally:
+        db.close()
 
 @app.get("/api/tuning")
 async def tune_model(
