@@ -3,8 +3,8 @@
 
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Codacy Badge](https://app.codacy.com/project/badge/Grade/751bdd64552340a09021094ab6366f87)
-![前端模块版本](https://img.shields.io/badge/前端模块-3.0.0-blue.svg)
-![用户管理模块](https://img.shields.io/badge/用户管理模块-0.1.1-blue.svg)
+![前端模块版本](https://img.shields.io/badge/前端模块-3.0.1-blue.svg)
+![用户管理模块](https://img.shields.io/badge/用户管理模块-0.2.1-blue.svg)
 ![模型管理模块](https://img.shields.io/badge/模型管理模块-0.2.0-blue.svg)
 
 ## 目前的功能
@@ -15,7 +15,7 @@
 
 ## 技术栈
 - 前端：TypeScript+Vue3+Vite
-- 后端-用户管理模块：Kotlin+SpringBoot3+JPA
+- 后端-用户管理模块：Kotlin+SpringBoot3+JPA+Sa-Token
 - 后端-模型管理模块：Python+FastAPI+Pandas+Scikit-learn+Pytorch
 
 ```plaintext
@@ -44,7 +44,7 @@ WaterQuality/                  # 项目根目录
 
 ## TODOs
 - [x] 使用TS重构前端模块
-- [ ] 尝试继续优化用户管理模块
+- [ ] 尝试继续优化用户管理模块（正在进行）
 
 ## 特别感谢
 @Jetbrains IDE开发支持
