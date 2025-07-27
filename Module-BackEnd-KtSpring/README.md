@@ -1,5 +1,5 @@
 # 水质预测系统-后端-用户管理
-技术栈：Kotlin+SpringBoot3+JPA
+技术栈：Kotlin+SpringBoot3+JPA+Sa-Token
 
 ## 特别感谢
 @Jetbrains IDEA等IDE的开发支持

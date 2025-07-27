@@ -6,6 +6,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 
 /**
+ * 密码编码器配置
  * Module-BackEnd-KtSpring
  * @author FxMarkBrown
  * @since 2025/06/14

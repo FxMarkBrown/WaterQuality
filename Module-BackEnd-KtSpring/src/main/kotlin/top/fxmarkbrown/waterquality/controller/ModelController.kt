@@ -1,5 +1,9 @@
 package top.fxmarkbrown.waterquality.controller
 
+import cn.dev33.satoken.annotation.SaCheckLogin
+import cn.dev33.satoken.annotation.SaCheckRole
+import cn.dev33.satoken.annotation.SaMode
+import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import top.fxmarkbrown.waterquality.model.Model
 import top.fxmarkbrown.waterquality.service.ModelService
@@ -12,6 +16,7 @@ import top.fxmarkbrown.waterquality.service.ModelService
  **/
 @RestController
 @RequestMapping("/model")
+@CrossOrigin(originPatterns = ["*"], allowCredentials = "true")
 class ModelController (
     private val modelService: ModelService
 ) {
@@ -22,40 +27,44 @@ class ModelController (
      * @param uid 用户ID
      */
     @GetMapping("/training")
+    @SaCheckRole(value = ["ADMIN", "VIP"], mode = SaMode.OR)
     fun trainModel(
         @RequestParam indicator: String,
         @RequestParam method: String,
         @RequestParam uid: Int
-    ): Map<String, Any> {
-        return modelService.trainModel(indicator.uppercase(), method.uppercase(), uid)
+    ): ResponseEntity<Map<String, Any>> {
+        return ResponseEntity.ok(modelService.trainModel(indicator.uppercase(), method.uppercase(), uid))
     }
 
     /**
      * 预测下个月
      */
     @GetMapping("/prediction")
+    @SaCheckLogin
     fun predictNextMonth(
         @RequestParam id: Int,
         @RequestParam indicator: String
-    ): Map<String, Any> {
-        return modelService.predictNextMonth(id, indicator)
+    ): ResponseEntity<Map<String, Any>> {
+        return ResponseEntity.ok(modelService.predictNextMonth(id, indicator))
     }
 
     /**
      * 调优模型
      */
     @GetMapping("/tuning")
+    @SaCheckLogin
     fun tuneModel(
         @RequestParam id: Int,
         @RequestParam method: String
-    ): Map<String, Any> {
-        return modelService.tuneModel(id, method)
+    ): ResponseEntity<Map<String, Any>> {
+        return ResponseEntity.ok(modelService.tuneModel(id, method))
     }
 
     /**
      * 获取可用模型
      */
     @GetMapping("/available")
+    @SaCheckLogin
     fun getAvailableModel(
         @RequestParam indicator: String,
         @RequestParam method: String
@@ -71,6 +80,7 @@ class ModelController (
      * 获取某个指标的所有可用模型
      */
     @GetMapping("/list")
+    @SaCheckLogin
     fun getAllModelsByTarget(@RequestParam indicator: String): List<String> {
         return modelService.getAllModelsByTarget(indicator)
     }
@@ -79,11 +89,12 @@ class ModelController (
      * 删除模型
      */
     @PostMapping("/delete/{id}")
-    fun deleteModel(@PathVariable id: Int): Map<String, Any> {
+    @SaCheckRole(value = ["ADMIN", "VIP"], mode = SaMode.OR)
+    fun deleteModel(@PathVariable id: Int): ResponseEntity<Map<String, Any>> {
         return if (modelService.deleteModel(id)) {
-            mapOf("status" to "success")
+            ResponseEntity.ok(mapOf("status" to "success"))
         } else {
-            mapOf("status" to "failure")
+            ResponseEntity.internalServerError().body(mapOf("status" to "failure"))
         }
     }
 }

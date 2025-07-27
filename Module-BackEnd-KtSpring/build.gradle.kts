@@ -9,7 +9,7 @@ plugins {
 apply(plugin = "io.spring.dependency-management")
 
 group = "top.fxmarkbrown"
-version = "0.1.1-SNAPSHOT"
+version = "0.2.1-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
@@ -18,7 +18,6 @@ repositories {
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web") {
         exclude(group = "org.apache.httpcomponents", module = "httpclient")
     }
@@ -27,10 +26,14 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
 
+    // Sa-Token 代替原Spring Security
+    implementation("cn.dev33:sa-token-spring-boot3-starter:1.38.0")
+    // 使用Spring Security Crypto的PasswordEncoder
+    implementation("org.springframework.security:spring-security-crypto:6.4.4")
+
     runtimeOnly("com.mysql:mysql-connector-j")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.junit.jupiter:junit-jupiter")
 
     implementation("org.apache.httpcomponents.client5:httpclient5:5.5")

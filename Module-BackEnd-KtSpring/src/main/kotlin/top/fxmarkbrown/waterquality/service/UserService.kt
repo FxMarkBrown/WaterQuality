@@ -1,10 +1,6 @@
 package top.fxmarkbrown.waterquality.service
 
 import org.slf4j.LoggerFactory
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.core.userdetails.UserDetails
-import org.springframework.security.core.userdetails.UserDetailsService
-import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -23,40 +19,8 @@ class UserService(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
     private val passwordEncoder: PasswordEncoder
-) : UserDetailsService {
-
+) {
     private val logger = LoggerFactory.getLogger(UserService::class.java)
-
-    /**
-     * 根据用户名加载用户信息
-     */
-    override fun loadUserByUsername(username: String): UserDetails {
-        return userRepository.findUserByName(username) ?: throw UsernameNotFoundException("用户不存在: $username")
-    }
-
-    /**
-     * 添加用户
-     */
-    @Transactional
-    fun addUser(user: User): Boolean {
-        return try {
-            userRepository.save(user)
-            true
-        } catch (e: Exception) {
-            logger.error("添加用户失败 UID: ${user.id}")
-            e.printStackTrace()
-            false
-        }
-    }
-
-    /**
-     * 获取当前登录用户
-     */
-    fun getCurrentUser(): User {
-        val authentication = SecurityContextHolder.getContext().authentication
-        return authentication.principal as User
-    }
-
     /**
      * 修改密码
      */
@@ -79,7 +43,7 @@ class UserService(
      */
     fun checkPassword(password: String, userId: Int): Boolean {
         val user = userRepository.findUserById(userId) ?: return false
-        return passwordEncoder.matches(password, user.pass)
+        return user.pass != null && passwordEncoder.matches(password, user.pass!!)
     }
 
     /**
