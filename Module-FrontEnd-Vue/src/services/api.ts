@@ -500,5 +500,3 @@ export class ApiService {
 export {
   httpClient,
 };
-
-export default ApiService;

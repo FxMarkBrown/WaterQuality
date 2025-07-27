@@ -42,7 +42,7 @@ export interface ApiUser {
   /** 用户ID */
   id: number;
   /** 用户名 */
-  username: string;
+  name: string;
   /** 用户角色 */
   role: UserRole;
 }

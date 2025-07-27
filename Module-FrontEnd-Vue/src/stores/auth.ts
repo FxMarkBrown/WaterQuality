@@ -60,7 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     return {
       id: apiUser.id,
-      username: apiUser.username,
+      username: apiUser.name,
       role: roleName,
       authority,
     };

@@ -4,29 +4,24 @@
  * @description 管理机器学习模型和相关操作
  */
 
-import { defineStore } from 'pinia';
-import {ref, computed, readonly} from 'vue';
-import { ApiService } from '@/services/api';
-import { ErrorHandler, showSuccess } from '@/utils/error-handler';
-import { formatDate } from '@/utils/date';
+import {defineStore} from 'pinia';
+import {computed, readonly, ref} from 'vue';
+import {ApiService} from '@/services/api';
+import {ErrorHandler, showSuccess} from '@/utils/error-handler';
+import {formatDate} from '@/utils/date';
 import type {
   ApiModel,
   Model,
-  ModelTrainingParams,
-  ModelTrainingResponse,
   ModelPredictionParams,
   ModelPredictionResponse,
+  ModelTrainingParams,
+  ModelTrainingResponse,
   ModelTuningParams,
   ModelTuningResponse,
-  WaterQualityIndicator,
-  ModelType
+  ModelType,
+  WaterQualityIndicator
 } from '@/types';
-import {
-  ALL_MODELS_VALUE,
-  TUNABLE_MODELS,
-  MODEL_TYPE_NAMES,
-  WATER_QUALITY_INDICATOR_NAMES
-} from '@/constants';
+import {ALL_MODELS_VALUE, MODEL_TYPE_NAMES, TUNABLE_MODELS, WATER_QUALITY_INDICATOR_NAMES} from '@/constants';
 
 /**
  * 模型管理状态Store
@@ -163,8 +158,7 @@ export const useModelStore = defineStore('model', () => {
    */
   const getModelMethods = async (indicator: WaterQualityIndicator): Promise<boolean> => {
     try {
-      const methods = await ApiService.model.getModelMethods(indicator);
-      modelMethods.value = methods;
+      modelMethods.value = await ApiService.model.getModelMethods(indicator);
       currentIndicator.value = indicator;
 
       return true;
