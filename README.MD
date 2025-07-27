@@ -49,4 +49,4 @@ WaterQuality/                  # 项目根目录
 ## 特别感谢
 @Jetbrains IDE开发支持
 
-@sctpan 本项目部分引用其水质检测系统的代码并对其进行重构
+@sctpan 本项目部分引用其[水质管理与预测系统1.0](https://github.com/sctpan/WQMFS)的代码并对其进行重构
