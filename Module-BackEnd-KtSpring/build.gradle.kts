@@ -9,7 +9,7 @@ plugins {
 apply(plugin = "io.spring.dependency-management")
 
 group = "top.fxmarkbrown"
-version = "0.2.1-SNAPSHOT"
+version = "0.2.2-SNAPSHOT"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
@@ -36,7 +36,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.junit.jupiter:junit-jupiter")
 
-    implementation("org.apache.httpcomponents.client5:httpclient5:5.5")
+    // OkHttps 4.x + Jackson converter
+    implementation("cn.zhxu:okhttps:4.1.0")
+    implementation("cn.zhxu:okhttps-jackson:4.1.0")
 }
 
 springBoot {

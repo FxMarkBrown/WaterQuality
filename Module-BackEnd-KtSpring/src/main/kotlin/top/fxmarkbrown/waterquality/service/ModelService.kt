@@ -1,17 +1,10 @@
 package top.fxmarkbrown.waterquality.service
-
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import org.apache.hc.client5.http.classic.methods.HttpGet
-import org.apache.hc.client5.http.impl.classic.HttpClients
-import org.apache.hc.core5.http.io.entity.EntityUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import top.fxmarkbrown.waterquality.config.ApiConfig
 import top.fxmarkbrown.waterquality.model.Model
 import top.fxmarkbrown.waterquality.reponsitory.ModelRepository
 import top.fxmarkbrown.waterquality.reponsitory.UserRepository
-import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -25,11 +18,10 @@ class ModelService(
     private val modelRepository: ModelRepository,
     private val userRepository: UserRepository,
     private val waterQualityService: WaterQualityService,
-    private val apiConfig: ApiConfig
+    private val apiConfig: ApiConfig,
+    private val httpClientService: HttpClientService
 ) {
     private val logger = LoggerFactory.getLogger(ModelService::class.java)
-    private val objectMapper = ObjectMapper()
-    private val httpClient = HttpClients.createDefault()
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd")
 
     /********************************************** 训练 **********************************************/
@@ -87,32 +79,26 @@ class ModelService(
      * 解析训练响应结果
      */
     @Suppress("UNCHECKED_CAST")
-    private fun parseTrainingResponse(response: String?): Map<String, Any> {
+    private fun parseTrainingResponse(response: Map<String, Any>?): Map<String, Any> {
         if (response == null) {
             logger.error("训练返回为null")
             return mapOf("status" to "failure")
         }
-
-        return try {
-            val root = objectMapper.readValue<Map<String, Any>>(response)
-            if (root["status"] == "failure") {
-                logger.warn("训练失败: $response")
-                mapOf("status" to "failure")
-            } else {
-                val data = root["data"] as Map<String, Any>
-                mapOf(
-                    "status" to "success",
-                    "data" to mapOf(
-                        "rmse" to data["rmse"] as Double,
-                        "pred" to (data["pred"] as List<Any>).map { it as Double },
-                        "real" to (data["real"] as List<Any>).map { it as Double }
-                    )
-                )
-            }
-        } catch (e: IOException) {
-            logger.error("解析训练结果时发生错误", e)
-            mapOf("status" to "failure")
+        val status = response["status"] as? String
+        if (status == null || status.equals("failure", ignoreCase = true)) {
+            logger.warn("训练失败: $response")
+            return mapOf("status" to "failure")
         }
+        @Suppress("UNCHECKED_CAST")
+        val data = response["data"] as? Map<String, Any> ?: return mapOf("status" to "failure")
+        return mapOf(
+            "status" to "success",
+            "data" to mapOf(
+                "rmse" to (data["rmse"] as Number).toDouble(),
+                "pred" to ((data["pred"] as List<*>).map { (it as Number).toDouble() }),
+                "real" to ((data["real"] as List<*>).map { (it as Number).toDouble() })
+            )
+        )
     }
 
     /********************************************** 预测 **********************************************/
@@ -140,12 +126,11 @@ class ModelService(
 
         val url = "${apiConfig.baseUrl}prediction?model_id=$modelId&month=$predictionMonth"
 
-        val jsonResp = sendFastAPIRequest(url)
-        val resp = parsePredictionResponse(jsonResp).toMutableMap()
+        val resp = parsePredictionResponse(sendFastAPIRequest(url)).toMutableMap()
 
         if (resp["status"] == "success") {
             val data = resp["data"] as Map<String, Any>
-            val prediction = data["pred"] as Double
+            val prediction = (data["pred"] as Number).toDouble()
 
             //向回传的数据添加下个月的预测值和日期
             forPlot.add(prediction)
@@ -167,22 +152,16 @@ class ModelService(
     /**
      * 解析预测响应结果
      */
-    private fun parsePredictionResponse(response: String?): Map<String, Any> {
+    private fun parsePredictionResponse(response: Map<String, Any>?): Map<String, Any> {
         if (response == null) {
             logger.error("预测返回为null")
             return mapOf("status" to "failure")
         }
-
-        return try {
-            val resp = objectMapper.readValue<Map<String, Any>>(response)
-            if (resp["status"] == "failure") {
-                logger.warn("预测失败: $response")
-                mapOf("status" to "failure")
-            } else resp
-        } catch (e: IOException) {
-            logger.error("解析预测结果时发生错误", e)
+        val status = response["status"] as? String
+        return if (status == null || status.equals("failure", ignoreCase = true)) {
+            logger.warn("预测失败: $response")
             mapOf("status" to "failure")
-        }
+        } else response
     }
 
     /********************************************** 调优 **********************************************/
@@ -196,29 +175,23 @@ class ModelService(
      */
     private fun requestTuning(modelId: Int, method: String): Map<String, Any> {
         val url = "${apiConfig.baseUrl}tuning?model_id=$modelId&method=$method"
-        val jsonResp = sendFastAPIRequest(url)
-        return parseTuningResponse(jsonResp).toMutableMap()
+        val resp = sendFastAPIRequest(url)
+        return parseTuningResponse(resp).toMutableMap()
     }
 
     /**
      * 解析调优响应结果
      */
-    private fun parseTuningResponse(response: String?): Map<String, Any> {
+    private fun parseTuningResponse(response: Map<String, Any>?): Map<String, Any> {
         if (response == null) {
             logger.error("调优返回为null")
             return mapOf("status" to "failure")
         }
-
-        return try {
-            val resp = objectMapper.readValue<Map<String, Any>>(response)
-            if (resp["status"] == "failure") {
-                logger.warn("调优失败: $response")
-                mapOf("status" to "failure")
-            } else resp
-        } catch (e: IOException) {
-            logger.error("解析调优结果时发生错误", e)
+        val status = response["status"] as? String
+        return if (status == null || status.equals("failure", ignoreCase = true)) {
+            logger.warn("调优失败: $response")
             mapOf("status" to "failure")
-        }
+        } else response
     }
 
     /********************************************** 其他 **********************************************/
@@ -226,26 +199,9 @@ class ModelService(
     /**
      * 发送HTTP请求
      */
-    private fun sendFastAPIRequest(url: String): String? {
+    private fun sendFastAPIRequest(url: String): Map<String, Any>? {
         logger.info("向Python FastAPI发送请求 URL: $url")
-        val httpGet = HttpGet(url)
-        return try {
-            httpClient.execute(httpGet) { response ->
-                val statusCode = response.code
-                if (statusCode !in 200..299) {
-                    logger.warn("HTTP 错误: $statusCode, URL: $url")
-                    null
-                } else {
-                    val entity = response.entity
-                    EntityUtils.toString(entity, "UTF-8").trim()
-                }
-            }
-        } catch (e: Exception) {
-            logger.error("发送HTTP请求错误 URL: $url", e)
-            null
-        } finally {
-            httpGet.abort()
-        }
+        return httpClientService.getJson(url)
     }
 
     /**
